@@ -3,144 +3,328 @@
 #include <algorithm>
 using namespace std;
 
-const int ROWS = 10;
-const int COLS = 10;
+const int N = 10;
 
-// Fixed move priority: Right, Down, Left, Up
+// Movement priority: Right -> Down -> Left -> Up
 int dr[] = {0, 1, 0, -1};
 int dc[] = {1, 0, -1, 0};
 
 using Point = pair<int, int>;
 
-// Status constants
+
+/*
+    DLS RESULT
+
+    SUCCESS = Goal found
+    CUTOFF  = Search stopped because depth limit was reached
+    FAILURE = No path exists
+*/
 const int SUCCESS = 1;
 const int CUTOFF = 0;
 const int FAILURE = -1;
 
-vector<Point> expansionOrder;
-int maxDepthReached = 0;
-bool onPath[ROWS][COLS];
-vector<Point> solutionPath;
 
-// Recursive Depth-Limited Search (DLS)
-int dls(const vector<vector<char>>& grid, Point curr, Point goal, int depth, int limit, vector<Point>& path) {
-    expansionOrder.push_back(curr);
-    maxDepthReached = max(maxDepthReached, depth);
+// Stores the cells explored by DLS
+vector<Point> expanded;
 
+// Stores the current path
+vector<Point> solution;
+
+// Prevents the algorithm from visiting
+// the same cell again in the CURRENT path
+bool onPath[N][N];
+
+
+/*
+    DEPTH-LIMITED SEARCH (DLS)
+    --------------------------
+
+    DLS is basically DFS + a depth limit.
+
+    DFS:
+        Keep going deeper.
+
+    DLS:
+        Keep going deeper ONLY until
+        depth == limit.
+
+    Example:
+
+        S
+        |
+        A       depth = 1
+        |
+        B       depth = 2
+        |
+        G       depth = 3
+
+    If limit = 2:
+        G will NOT be searched.
+
+    If limit = 3:
+        G can be found.
+*/
+int dls(const vector<vector<char>>& grid,
+        Point curr,
+        Point goal,
+        int depth,
+        int limit,
+        vector<Point>& path) {
+
+    // Record that this node was expanded
+    expanded.push_back(curr);
+
+
+    // Goal found
     if (curr == goal) {
-        solutionPath = path;
+
+        solution = path;
+
         return SUCCESS;
     }
 
-    if (depth == limit) return CUTOFF;
 
-    bool cutoffOccurred = false;
-    int r = curr.first, c = curr.second;
+    /*
+        If depth limit has been reached,
+        don't go any deeper.
 
+        This is the main difference
+        between DFS and DLS.
+    */
+    if (depth == limit)
+        return CUTOFF;
+
+
+    bool cutoffFound = false;
+
+    int r = curr.first;
+    int c = curr.second;
+
+
+    /*
+        Try all four possible movements.
+
+        Order:
+            Right
+            Down
+            Left
+            Up
+    */
     for (int i = 0; i < 4; i++) {
+
         int nr = r + dr[i];
         int nc = c + dc[i];
 
-        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] != 'X' && !onPath[nr][nc]) {
+
+        /*
+            Move only if:
+            1. Inside grid
+            2. Not an obstacle
+            3. Not already present in current path
+        */
+        if (nr >= 0 && nr < N &&
+            nc >= 0 && nc < N &&
+            grid[nr][nc] != 'X' &&
+            !onPath[nr][nc]) {
+
+
+            // Mark cell as part of current path
             onPath[nr][nc] = true;
+
             path.push_back({nr, nc});
 
-            int result = dls(grid, {nr, nc}, goal, depth + 1, limit, path);
 
+            // Recursively search next cell
+            int result = dls(
+                grid,
+                {nr, nc},
+                goal,
+                depth + 1,
+                limit,
+                path
+            );
+
+
+            // Backtrack
             path.pop_back();
             onPath[nr][nc] = false;
 
-            if (result == SUCCESS) return SUCCESS;
-            if (result == CUTOFF) cutoffOccurred = true;
+
+            // Goal found
+            if (result == SUCCESS)
+                return SUCCESS;
+
+
+            // At least one branch hit depth limit
+            if (result == CUTOFF)
+                cutoffFound = true;
         }
     }
 
-    return cutoffOccurred ? CUTOFF : FAILURE;
+
+    /*
+        If any branch was stopped because of
+        depth limit -> return CUTOFF.
+
+        Otherwise -> no path exists from here.
+    */
+    return cutoffFound ? CUTOFF : FAILURE;
 }
 
-void runDLS(const vector<vector<char>>& grid, int limit) {
-    cout << "--- Depth-Limited Search: Limit = " << limit << " ---\n";
 
-    expansionOrder.clear();
-    maxDepthReached = 0;
-    solutionPath.clear();
-    for (int i = 0; i < ROWS; i++)
-        for (int j = 0; j < COLS; j++)
-            onPath[i][j] = false;
+/*
+    RUN DLS WITH A GIVEN DEPTH LIMIT
+*/
+void runDLS(const vector<vector<char>>& grid, int limit) {
 
     Point start = {0, 0};
     Point goal = {9, 9};
 
+
+    cout << "--- Depth-Limited Search ---\n";
+    cout << "Depth Limit: " << limit << "\n";
+
+
+    // Reset previous run
+    expanded.clear();
+    solution.clear();
+
+    for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+            onPath[i][j] = false;
+
+
+    // Starting cell belongs to current path
     onPath[start.first][start.second] = true;
+
     vector<Point> path = {start};
 
-    int result = dls(grid, start, goal, 0, limit, path);
 
-    cout << "Nodes expanded (in order):\n";
-    for (int i = 0; i < (int)expansionOrder.size(); i++) {
-        cout << "(" << expansionOrder[i].first << ", " << expansionOrder[i].second << ")";
-        if (i + 1 < (int)expansionOrder.size()) cout << " -> ";
+    // Start DLS
+    int result = dls(
+        grid,
+        start,
+        goal,
+        0,          // Starting depth
+        limit,
+        path
+    );
+
+
+    /*
+        PRINT EXPANSION ORDER
+    */
+    cout << "Nodes expanded:\n";
+
+    for (int i = 0; i < expanded.size(); i++) {
+
+        cout << "("
+             << expanded[i].first << ", "
+             << expanded[i].second << ")";
+
+        if (i + 1 < expanded.size())
+            cout << " -> ";
     }
+
     cout << "\n";
-    cout << "Maximum depth reached: " << maxDepthReached << "\n";
+
+
+    /*
+        PRINT RESULT
+    */
 
     if (result == SUCCESS) {
-        cout << "Result: SUCCESS\nRoute:\n";
-        for (int i = 0; i < (int)solutionPath.size(); i++) {
-            cout << "(" << solutionPath[i].first << ", " << solutionPath[i].second << ")";
-            if (i + 1 < (int)solutionPath.size()) cout << " -> ";
+
+        cout << "Result: SUCCESS\n";
+
+        cout << "Route:\n";
+
+        for (int i = 0; i < solution.size(); i++) {
+
+            cout << "("
+                 << solution[i].first << ", "
+                 << solution[i].second << ")";
+
+            if (i + 1 < solution.size())
+                cout << " -> ";
         }
-        cout << "\nSolution depth / movements: " << (solutionPath.size() - 1) << "\n";
-    } else if (result == CUTOFF) {
-        cout << "Result: CUTOFF / Goal not found within depth limit\n";
-        cout << "Maximum allowed depth: " << limit << "\n";
-    } else {
-        cout << "Result: FAILURE / Goal not reachable\n";
+
+        cout << "\n";
+
+        cout << "Movements: "
+             << solution.size() - 1 << "\n";
     }
+
+    else if (result == CUTOFF) {
+
+        cout << "Result: CUTOFF\n";
+        cout << "Goal was not found within depth "
+             << limit << "\n";
+    }
+
+    else {
+
+        cout << "Result: FAILURE\n";
+        cout << "Goal is not reachable.\n";
+    }
+
     cout << "\n";
 }
 
+
 int main() {
+
+    /*
+        GRID
+
+        S = Start
+        G = Goal
+        R = Normal road
+        X = Obstacle
+
+        Task:
+        Find a path from S -> G.
+
+        DLS will search using DFS,
+        but it cannot go deeper than
+        the specified depth limit.
+    */
+
     vector<vector<char>> grid = {
-        {'S', 'R', 'R', 'X', 'R', 'R', 'R', 'R', 'R', 'R'},
-        {'X', 'X', 'R', 'X', 'R', 'X', 'X', 'X', 'X', 'R'},
-        {'R', 'R', 'R', 'X', 'R', 'R', 'R', 'R', 'X', 'R'},
-        {'R', 'X', 'X', 'X', 'X', 'X', 'X', 'R', 'X', 'R'},
-        {'R', 'R', 'R', 'R', 'R', 'R', 'X', 'R', 'R', 'R'},
-        {'X', 'X', 'X', 'X', 'X', 'R', 'X', 'X', 'X', 'R'},
-        {'R', 'R', 'R', 'R', 'X', 'R', 'R', 'R', 'R', 'R'},
-        {'R', 'X', 'X', 'R', 'X', 'X', 'X', 'X', 'X', 'R'},
-        {'R', 'R', 'R', 'R', 'R', 'R', 'R', 'R', 'R', 'R'},
-        {'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'X', 'G'}
+
+        {'S','R','R','X','R','R','R','R','R','R'},
+        {'X','X','R','X','R','X','X','X','X','R'},
+        {'R','R','R','X','R','R','R','R','X','R'},
+        {'R','X','X','X','X','X','X','R','X','R'},
+        {'R','R','R','R','R','R','X','R','R','R'},
+        {'X','X','X','X','X','R','X','X','X','R'},
+        {'R','R','R','R','X','R','R','R','R','R'},
+        {'R','X','X','R','X','X','X','X','X','R'},
+        {'R','R','R','R','R','R','R','R','R','R'},
+        {'X','X','X','X','X','X','X','X','X','G'}
     };
 
-    runDLS(grid, 18); // Run 1
-    runDLS(grid, 25); // Run 2
+
+    /*
+        Run DLS twice.
+
+        First:
+            limit = 18
+
+        Second:
+            limit = 25
+
+        If the solution needs more than 18
+        movements, the first run will return
+        CUTOFF.
+
+        The second run may find the goal.
+    */
+
+    runDLS(grid, 18);
+
+    runDLS(grid, 25);
+
 
     return 0;
 }
-
-/*
----------------------------------------------------------------
-Comparison / Discussion Questions & Analysis
----------------------------------------------------------------
-1. Why can DLS fail to find a goal even when a valid path exists?
-   DLS stops expanding when depth == limit L. If the shortest valid path
-   needs more than L moves (e.g., L = 18 when 22 are needed), DLS hits
-   a CUTOFF on all candidate paths before reaching the goal.
-
-2. How does increasing L affect time and memory usage?
-   Time: Increases exponentially in the worst case (O(b^L)), as deeper
-   branches are explored.
-   Memory: Grows linearly (O(L)), because only the current recursion path
-   is kept in memory.
-
-3. How is DLS different from ordinary DFS?
-   DFS can wander infinitely deep into loops/cycles or deep branches.
-   DLS imposes a hard depth cutoff L, guaranteeing termination.
-
-4. Is DLS guaranteed to return the shortest path?
-   No. DLS returns the FIRST path found under its fixed successor
-   order (Right -> Down -> Left -> Up). It does not search for or
-   compare alternative shorter paths.
-*/

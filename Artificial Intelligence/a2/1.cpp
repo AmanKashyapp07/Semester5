@@ -1,200 +1,281 @@
 #include <iostream>
 #include <vector>
-#include <string>
 #include <queue>
-#include <map>
 #include <algorithm>
 using namespace std;
 
-const int ROWS = 10;
-const int COLS = 10;
+const int N = 10;
 
-// Direction priority: Up, Right, Down, Left
+// Movement priority:
+// Up -> Right -> Down -> Left
 int dr[] = {-1, 0, 1, 0};
 int dc[] = {0, 1, 0, -1};
 
-// Helper to count total dirty cells in grid
-int countDirty(const vector<vector<char>>& grid) {
+// Count how many dirty cells are present
+int countDirty(vector<vector<char>>& grid) {
     int count = 0;
-    for (int i = 0; i < ROWS; i++) {
-        for (int j = 0; j < COLS; j++) {
-            if (grid[i][j] == 'D') count++;
-        }
-    }
+
+    for (auto &row : grid)
+        for (char cell : row)
+            if (cell == 'D')
+                count++;
+
     return count;
 }
 
-// 1. Simple Reflex Agent (No internal memory, moves by fixed priority rules)
-void runSimpleReflex(vector<vector<char>> grid, int startR, int startC) {
-    int r = startR, c = startC;
-    int totalDirty = countDirty(grid);
-    int cleaned = 0, movements = 0, totalActions = 0;
-    map<pair<int, int>, int> visitCount;
-    visitCount[{r, c}] = 1;
+/*
+    1. SIMPLE REFLEX AGENT
 
-    int maxSteps = 1000; // Cap to handle reflex oscillation
-    for (int step = 0; step < maxSteps && cleaned < totalDirty; step++) {
-        // Condition-Action: If current cell is dirty -> Clean it
+    Idea:
+    - Agent only looks at the CURRENT cell.
+    - If current cell is dirty -> clean it.
+    - Otherwise -> move using fixed priority:
+      Up, Right, Down, Left.
+    - It does NOT remember visited cells.
+    - It does NOT plan a path.
+
+    This can cause unnecessary/repeated movements.
+*/
+void simpleReflex(vector<vector<char>> grid, int r, int c) {
+
+    int totalDirty = countDirty(grid);
+    int cleaned = 0;
+    int moves = 0;
+
+    while (cleaned < totalDirty) {
+
+        // Rule 1: If current cell is dirty, clean it
         if (grid[r][c] == 'D') {
             grid[r][c] = 'C';
             cleaned++;
-            totalActions++;
             continue;
         }
 
-        // Otherwise move by priority: Up, Right, Down, Left
+        // Rule 2: If cell is clean, move in fixed priority
         bool moved = false;
+
         for (int i = 0; i < 4; i++) {
+
             int nr = r + dr[i];
             int nc = c + dc[i];
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] != 'X') {
+
+            // Move only if:
+            // 1. Inside the grid
+            // 2. Not an obstacle ('X')
+            if (nr >= 0 && nr < N &&
+                nc >= 0 && nc < N &&
+                grid[nr][nc] != 'X') {
+
                 r = nr;
                 c = nc;
-                movements++;
-                totalActions++;
-                visitCount[{r, c}]++;
+                moves++;
+
                 moved = true;
                 break;
             }
         }
-        if (!moved) break;
-    }
 
-    int repeatedVisits = 0;
-    for (auto& entry : visitCount) {
-        if (entry.second > 1) repeatedVisits += (entry.second - 1);
+        // Stop if no valid movement is possible
+        if (!moved)
+            break;
     }
 
     cout << "--- Simple Reflex Agent ---\n";
-    cout << "Dirty cells cleaned: " << cleaned << "\n";
-    cout << "Movements: " << movements << "\n";
-    cout << "Total actions: " << totalActions << "\n";
-    cout << "Repeated visits: " << repeatedVisits << "\n\n";
+    cout << "Dirty cells cleaned: " << cleaned << '\n';
+    cout << "Movements: " << moves << "\n\n";
 }
 
-// BFS helper for Model-Based Agent to find shortest path to nearest dirty cell
-vector<pair<int, int>> findNearestDirty(const vector<vector<char>>& grid, int startR, int startC) {
-    queue<pair<int, int>> q;
-    vector<vector<bool>> visited(ROWS, vector<bool>(COLS, false));
-    vector<vector<pair<int, int>>> parent(ROWS, vector<pair<int, int>>(COLS, {-1, -1}));
 
-    q.push({startR, startC});
-    visited[startR][startC] = true;
-    pair<int, int> target = {-1, -1};
+/*
+    BFS HELPER
+
+    Goal:
+    Find the SHORTEST PATH from the current position
+    to the NEAREST dirty cell.
+
+    BFS explores cells level by level:
+
+        Start
+          |
+       distance 1
+          |
+       distance 2
+          |
+       distance 3 ...
+
+    Therefore, the first dirty cell found is the
+    nearest reachable dirty cell.
+*/
+vector<pair<int,int>> bfs(vector<vector<char>>& grid,
+                          int sr, int sc) {
+
+    queue<pair<int,int>> q;
+
+    // visited prevents visiting the same cell again
+    bool visited[N][N] = {};
+
+    // parent[x][y] stores the previous cell
+    // from which we reached (x,y)
+    pair<int,int> parent[N][N];
+
+    q.push({sr, sc});
+    visited[sr][sc] = true;
+
+    pair<int,int> target = {-1, -1};
 
     while (!q.empty()) {
-        auto curr = q.front();
-        q.pop();
-        int r = curr.first;
-        int c = curr.second;
 
+        auto [r, c] = q.front();
+        q.pop();
+
+        // If this cell is dirty, we found our target
         if (grid[r][c] == 'D') {
             target = {r, c};
             break;
         }
 
+        // Try all 4 directions
         for (int i = 0; i < 4; i++) {
+
             int nr = r + dr[i];
             int nc = c + dc[i];
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && grid[nr][nc] != 'X') {
-                if (!visited[nr][nc]) {
-                    visited[nr][nc] = true;
-                    parent[nr][nc] = {r, c};
-                    q.push({nr, nc});
-                }
+
+            if (nr >= 0 && nr < N &&
+                nc >= 0 && nc < N &&
+                grid[nr][nc] != 'X' &&
+                !visited[nr][nc]) {
+
+                visited[nr][nc] = true;
+
+                // Remember where we came from
+                parent[nr][nc] = {r, c};
+
+                q.push({nr, nc});
             }
         }
     }
 
-    if (target.first == -1) return {};
+    // No reachable dirty cell
+    if (target.first == -1)
+        return {};
 
-    vector<pair<int, int>> path;
-    pair<int, int> curr = target;
-    while (curr != make_pair(startR, startC)) {
-        path.push_back(curr);
-        curr = parent[curr.first][curr.second];
+    /*
+        Reconstruct path.
+
+        Example:
+
+        S -> A -> B -> D
+
+        parent[D] = B
+        parent[B] = A
+        parent[A] = S
+
+        So we go backwards and then reverse the path.
+    */
+    vector<pair<int,int>> path;
+
+    while (target != make_pair(sr, sc)) {
+        path.push_back(target);
+        target = parent[target.first][target.second];
     }
-    reverse(path.begin(), path.end());
-    return path;
-}
 
-// 2. Model-Based Reflex Agent (Maintains memory state & plans path to nearest dirty cell)
-void runModelBased(vector<vector<char>> grid, int startR, int startC) {
-    int r = startR, c = startC;
+    reverse(path.begin(), path.end());
+
+    return path;
+} // returns path from current position to nearest dirty cell, empty if no dirty cell is reachable
+
+
+/*
+    2. MODEL-BASED REFLEX AGENT
+
+    Idea:
+    - Agent maintains information about the environment.
+    - Instead of blindly moving, it searches for
+      the nearest dirty cell.
+    - BFS is used to find the shortest path.
+    - Agent then moves one step along that path.
+    - Repeat until all reachable dirty cells are cleaned.
+*/
+void modelBased(vector<vector<char>> grid, int r, int c) {
+
     int totalDirty = countDirty(grid);
-    int cleaned = 0, movements = 0, totalActions = 0;
-    map<pair<int, int>, int> visitCount;
-    visitCount[{r, c}] = 1;
+    int cleaned = 0;
+    int moves = 0;
 
     while (cleaned < totalDirty) {
+
+        // If current cell is dirty -> clean it
         if (grid[r][c] == 'D') {
             grid[r][c] = 'C';
             cleaned++;
-            totalActions++;
             continue;
         }
 
-        vector<pair<int, int>> path = findNearestDirty(grid, r, c);
-        if (path.empty()) break; // All reachable dirty cells cleaned
+        // Find shortest path to nearest dirty cell
+        vector<pair<int,int>> path = bfs(grid, r, c);
 
-        // Take next step along planned path
+        // No dirty cell is reachable
+        if (path.empty())
+            break;
+
+        // Move only ONE step along the planned path
         r = path[0].first;
         c = path[0].second;
-        movements++;
-        totalActions++;
-        visitCount[{r, c}]++;
-    }
 
-    int repeatedVisits = 0;
-    for (auto& entry : visitCount) {
-        if (entry.second > 1) repeatedVisits += (entry.second - 1);
+        moves++;
     }
 
     cout << "--- Model-Based Reflex Agent ---\n";
-    cout << "Dirty cells cleaned: " << cleaned << "\n";
-    cout << "Movements: " << movements << "\n";
-    cout << "Total actions: " << totalActions << "\n";
-    cout << "Repeated visits: " << repeatedVisits << "\n\n";
+    cout << "Dirty cells cleaned: " << cleaned << '\n';
+    cout << "Movements: " << moves << "\n\n";
 
-    cout << "--- Final State of Grid (After Model-Based Cleaning) ---\n";
-    for (int i = 0; i < ROWS; i++) {
-        for (int j = 0; j < COLS; j++) {
-            cout << grid[i][j] << (j + 1 < COLS ? " " : "");
-        }
-        cout << "\n";
+    // Display final grid
+    cout << "--- Final Grid ---\n";
+
+    for (auto &row : grid) {
+        for (char cell : row)
+            cout << cell << ' ';
+
+        cout << '\n';
     }
 }
 
+
 int main() {
-    vector<string> rawGrid = {
-        "S C D C X C C D C C",
-        "C X C C C C X C D C",
-        "D C C X D C C C C C",
-        "C C X C C C D X C C",
-        "C D C C X C C C C D",
-        "C C C D C C X C C C",
-        "X C C C C D C C X C",
-        "C C D X C C C D C C",
-        "C X C C D C C C C C",
-        "D C C C C X C C D C"
+
+    /*
+        GRID REPRESENTATION
+
+        S = Starting position
+        C = Clean cell
+        D = Dirty cell
+        X = Obstacle
+
+        Agent must clean all reachable D cells
+        while avoiding X cells.
+    */
+    vector<vector<char>> grid = {
+
+        {'S','C','D','C','X','C','C','D','C','C'},
+        {'C','X','C','C','C','C','X','C','D','C'},
+        {'D','C','C','X','D','C','C','C','C','C'},
+        {'C','C','X','C','C','C','D','X','C','C'},
+        {'C','D','C','C','X','C','C','C','C','D'},
+        {'C','C','C','D','C','C','X','C','C','C'},
+        {'X','C','C','C','C','D','C','C','X','C'},
+        {'C','C','D','X','C','C','C','D','C','C'},
+        {'C','X','C','C','D','C','C','C','C','C'},
+        {'D','C','C','C','C','X','C','C','D','C'}
     };
 
-    vector<vector<char>> grid(ROWS, vector<char>(COLS));
-    int startR = 0, startC = 0;
+    // Starting position of the agent
+    int startRow = 0;
+    int startCol = 0;
 
-    for (int i = 0; i < ROWS; i++) {
-        int colIdx = 0;
-        for (char ch : rawGrid[i]) {
-            if (ch != ' ') {
-                grid[i][colIdx] = ch;
-                if (ch == 'S') { startR = i; startC = colIdx; }
-                colIdx++;
-            }
-        }
-    }
+    // Run both AI agents on the same environment
+    simpleReflex(grid, startRow, startCol);
 
-    runSimpleReflex(grid, startR, startC);
-    runModelBased(grid, startR, startC);
+    modelBased(grid, startRow, startCol);
 
     return 0;
 }

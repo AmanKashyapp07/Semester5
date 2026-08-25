@@ -33,7 +33,7 @@ int main() {
             "A R R X R R R R R A",
             "R R R R O R R X R R",
             "X R R R R R R R A R"
-        };
+        }; // R means Road, X means Obstacle, A means Available Parking, O means Occupied Parking, E means Entrance
         for (auto& line : demo) {
             vector<char> row;
             for (char ch : line) {

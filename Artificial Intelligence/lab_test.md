@@ -1,6 +1,6 @@
 # 🎓 AI Lab Test Complete Preparation Guide (Semester 5)
 
-> **Don't Panic!** Everything covered in your 3 labs is organized below into **crystal-clear explanations, short cheat sheets, viva Q&As, and easy-to-memorize code implementations in both C++ and Python**.
+> **Don't Panic!** Everything covered in your 3 labs is organized below into **crystal-clear explanations, short cheat sheets, viva Q&As, and your updated code implementations**.
 
 ---
 
@@ -19,7 +19,8 @@
    - [P6: Cost-Aware Delivery Robot (Uniform Cost Search - UCS)](#p6-cost-aware-delivery-robot-uniform-cost-search---ucs)
    - [P7: Rescue Robot (Depth-Limited Search - DLS)](#p7-rescue-robot-depth-limited-search---dls)
 7. [Comparison of Search Algorithms (Exam Summary Table)](#7-comparison-of-search-algorithms-exam-summary-table)
-8. [Common Exam Pitfalls & Tips](#8-common-exam-pitfalls--tips)
+8. [Expected Viva / Discussion Questions & Exact Answers](#8-expected-viva--discussion-questions--exact-answers)
+9. [Common Exam Pitfalls & Tips](#9-common-exam-pitfalls--tips)
 
 ---
 
@@ -39,10 +40,10 @@
 An **Agent** is anything that perceives its **Environment** through **Sensors** and acts upon that environment through **Actuators**.
 - **Agent Function**: Abstract mathematical mapping from percept sequence to action: $f: P^* \to A$.
 - **PEAS Framework**:
-  - **P**erformance measure (Success criteria)
-  - **E**nvironment (Workspace / Grid)
-  - **A**ctuators (Motors / Wheels / Cleaners)
-  - **S**ensors (Cameras / Grid Percepts)
+  - **P**erformance measure (Success criteria, e.g. dirty cells cleaned, total cost minimized)
+  - **E**nvironment (Workspace / 2D Grid)
+  - **A**ctuators (Motors / Wheels / Cleaning mechanism)
+  - **S**ensors (Grid percepts / Coordinate detectors)
 
 ### B. The 4 Agent Types (Lab 2 Core Focus)
 ```
@@ -67,7 +68,7 @@ An **Agent** is anything that perceives its **Environment** through **Sensors** 
 1. **Initial State**: $S_0$ (e.g., $(0, 0)$ or $(0, 0)$ jug levels).
 2. **Actions**: Available moves from current state (e.g., `Up, Down, Left, Right` or `Fill, Empty, Pour`).
 3. **Transition Model**: `Result(s, a)` returns next state.
-4. **Goal Test**: Check if current state satisfies target condition (e.g., `jug == 2` or `cell == 'G'`).
+4. **Goal Test**: Check if current state satisfies target condition (e.g., `x == c || y == c` or `grid[r][c] == 'G'`).
 5. **Path Cost**: Sum of step costs along path $g(n)$.
 
 ---
@@ -76,25 +77,30 @@ An **Agent** is anything that perceives its **Environment** through **Sensors** 
 
 All grid programs in Lab 1, Lab 2, and Lab 3 share the **exact same core template**:
 
-### C++ Direction Arrays & Boundary Check:
+### Direction Vectors & Boundary Check:
 ```cpp
-// 4 Direction Vectors: Up, Down, Left, Right
-int dr[] = {-1, 1, 0, 0};
-int dc[] = {0, 0, -1, 1};
+const int N = 10;
+using Point = pair<int, int>;
 
-bool isValid(int r, int c, int rows, int cols, const vector<vector<char>>& grid) {
-    return (r >= 0 && r < rows && c >= 0 && c < cols && grid[r][c] != 'X');
+// Direction Moves: Up, Right, Down, Left
+int dr[] = {-1, 0, 1, 0};
+int dc[] = {0, 1, 0, -1};
+
+// Check if cell is valid and not an obstacle
+bool isValid(int nr, int nc, const vector<vector<char>>& grid) {
+    return (nr >= 0 && nr < N && nc >= 0 && nc < N && grid[nr][nc] != 'X');
 }
 ```
 
 ### Path Reconstruction (From Goal back to Start):
 ```cpp
-vector<pair<int, int>> path;
-pair<int, int> curr = goal;
-while (curr != make_pair(-1, -1)) {
+vector<Point> path;
+Point curr = goal;
+while (curr != start) {
     path.push_back(curr);
     curr = parent[curr.first][curr.second];
 }
+path.push_back(start);
 reverse(path.begin(), path.end());
 ```
 
@@ -122,40 +128,61 @@ reverse(path.begin(), path.end());
 #include <string>
 using namespace std;
 
-string checkWinner(const vector<vector<char>>& b) {
-    // Check 3 rows and 3 columns
+void printBoard(const vector<vector<char>>& board) {
     for (int i = 0; i < 3; i++) {
-        if (b[i][0] != '_' && b[i][0] == b[i][1] && b[i][1] == b[i][2])
-            return string(1, b[i][0]);
-        if (b[0][i] != '_' && b[0][i] == b[1][i] && b[1][i] == b[2][i])
-            return string(1, b[0][i]);
+        cout << board[i][0] << " | " << board[i][1] << " | " << board[i][2] << "\n";
+        cout << "---------\n";
     }
-    // Check 2 diagonals
-    if (b[0][0] != '_' && b[0][0] == b[1][1] && b[1][1] == b[2][2])
-        return string(1, b[0][0]);
-    if (b[0][2] != '_' && b[0][2] == b[1][1] && b[1][1] == b[2][0])
-        return string(1, b[0][2]);
+} // just printing all values in the 2D vector board
 
-    // Check for empty cell
-    for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
-            if (b[i][j] == '_') return "None";
+string checkWinner(const vector<vector<char>>& board) {
+    // Check rows and columns
+    for (int i = 0; i < 3; i++) {
+        if (board[i][0] != '_' && board[i][0] == board[i][1] && board[i][1] == board[i][2])
+            return string(1, board[i][0]);
+        if (board[0][i] != '_' && board[0][i] == board[1][i] && board[1][i] == board[2][i])
+            return string(1, board[0][i]);
+    }
+    // Check diagonals
+    if (board[0][0] != '_' && board[0][0] == board[1][1] && board[1][1] == board[2][2])
+        return string(1, board[0][0]);
+    if (board[0][2] != '_' && board[0][2] == board[1][1] && board[1][1] == board[2][0])
+        return string(1, board[0][2]);
+
+    // Check for empty cells (game still running)
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (board[i][j] == '_') return "None";
+        }
+    }
 
     return "Draw";
-}
+} // checking if there is a winner or if the game is still running or if it is a draw
 
 int main() {
+    cout << "Enter the 3x3 board row by row.\n";
+    cout << "Use 'X', 'O', or '_' for empty cells, separated by spaces:\n";
+
     vector<vector<char>> board(3, vector<char>(3));
-    cout << "Enter 3x3 board row by row (X, O, _):\n";
     for (int i = 0; i < 3; i++) {
         cout << "Row " << (i + 1) << ": ";
-        for (int j = 0; j < 3; j++) cin >> board[i][j];
+        for (int j = 0; j < 3; j++) {
+            cin >> board[i][j];
+        }
     }
 
-    string res = checkWinner(board);
-    if (res == "Draw") cout << "Result: The game is a Draw.\n";
-    else if (res == "None") cout << "Result: No winner yet, game still in progress.\n";
-    else cout << "Result: Player '" << res << "' wins!\n";
+    cout << "\nBoard:\n";
+    printBoard(board);
+
+    string result = checkWinner(board);
+    if (result == "Draw") {
+        cout << "Result: The game is a Draw.\n";
+    } else if (result == "None") {
+        cout << "Result: No winner yet, game still in progress.\n";
+    } else {
+        cout << "Result: Player '" << result << "' wins!\n";
+    }
+
     return 0;
 }
 ```
@@ -176,77 +203,77 @@ int main() {
 #### C++ Code:
 ```cpp
 #include <iostream>
-#include <vector>
 #include <queue>
 #include <map>
+#include <vector>
 #include <algorithm>
-#include <iomanip>
 using namespace std;
 
-using State = pair<int, int>; // (jugA, jugB)
+vector<pair<int,int>> solve(int a, int b, int c) {
+    queue<pair<int,int>> q;                   // queue to perform BFS
+    map<pair<int,int>, pair<int,int>> parent; // stores parent to reconstruct path
+    map<pair<int,int>, bool> vis;             // keeps track of visited states
 
-vector<State> solveWaterJug(int a, int b, int c) {
-    queue<State> q;
-    map<State, State> parent;
-    map<State, bool> visited;
+    pair<int,int> start = {0, 0};             // starting state (both empty)
+    q.push(start); 
+    vis[start] = true;
 
-    State start = {0, 0};
-    q.push(start);
-    visited[start] = true;
-    State goal = {-1, -1};
+    pair<int,int> goal = {-1, -1};
 
     while (!q.empty()) {
-        State curr = q.front();
+        auto [x, y] = q.front();
         q.pop();
-        int x = curr.first, y = curr.second;
 
         if (x == c || y == c) {
-            goal = curr;
+            goal = {x, y};
             break;
         }
 
-        vector<State> nextStates = {
-            {a, y},                                      // Fill A
-            {x, b},                                      // Fill B
-            {0, y},                                      // Empty A
-            {x, 0},                                      // Empty B
-            {x - min(x, b - y), y + min(x, b - y)},       // Pour A -> B
-            {x + min(y, a - x), y - min(y, a - x)}        // Pour B -> A
+        vector<pair<int,int>> next = {
+            {a, y},                             // Fill A
+            {x, b},                             // Fill B
+            {0, y},                             // Empty A
+            {x, 0},                             // Empty B
+            {x - min(x, b-y), y + min(x, b-y)}, // Pour A -> B
+            {x + min(y, a-x), y - min(y, a-x)}  // Pour B -> A
         };
 
-        for (auto& next : nextStates) {
-            if (!visited[next]) {
-                visited[next] = true;
-                parent[next] = curr;
-                q.push(next);
+        for (auto s : next) {
+            if (!vis[s]) {
+                vis[s] = true;
+                parent[s] = {x, y};
+                q.push(s);
             }
         }
     }
 
-    vector<State> path;
-    if (goal.first != -1) {
-        State curr = goal;
-        while (curr != start) {
-            path.push_back(curr);
-            curr = parent[curr];
-        }
-        path.push_back(start);
-        reverse(path.begin(), path.end());
-    }
+    vector<pair<int,int>> path;
+    if (goal.first == -1)
+        return path;
+
+    for (pair<int,int> cur = goal; cur != start; cur = parent[cur])
+        path.push_back(cur);
+
+    path.push_back(start);
+    reverse(path.begin(), path.end());
+
     return path;
 }
 
 int main() {
     int a = 4, b = 3, c = 2;
-    vector<State> path = solveWaterJug(a, b, c);
 
-    cout << "Water Jug Problem: " << a << "-li and " << b << "-li jugs\n\n";
-    cout << left << setw(6) << "Step" << setw(12) << "4-li jug" << setw(12) << "3-li jug" << "\n";
-    for (int i = 0; i < (int)path.size(); i++) {
-        cout << left << setw(6) << i << setw(12) << path[i].first << setw(12) << path[i].second << "\n";
+    auto path = solve(a, b, c);
+
+    if (path.empty()) {
+        cout << "No solution\n";
+        return 0;
     }
-    cout << "\nGoal reached: " << c << " liters obtained in " << (path.size() - 1) << " steps.\n";
-    return 0;
+
+    for (auto [x, y] : path)
+        cout << "(" << x << ", " << y << ")\n";
+
+    cout << "Steps: " << path.size() - 1 << '\n';
 }
 ```
 
@@ -270,57 +297,107 @@ int main() {
 #include <algorithm>
 using namespace std;
 
+// Direction moves: Up, Down, Left, Right
 int dr[] = {-1, 1, 0, 0};
 int dc[] = {0, 0, -1, 1};
 
 int main() {
-    vector<string> demo = {
-        "E R R X A X X R R R",
-        "R X R R R X R X R R",
-        "A R R X O R R O R A",
-        "R R X R R R X R R R",
-        "X R R R X R R R X R",
-        "R R O R R X R R R R",
-        "R X R R R R X R O R",
-        "A R R X R R R R R A",
-        "R R R R O R R X R R",
-        "X R R R R R R R A R"
-    };
+    cout << "Smart Parking System (BFS)\n";
+    cout << "1. Use demo 10x10 grid\n";
+    cout << "2. Enter custom grid\n";
+    cout << "Choose an option (1/2): ";
+    
+    int choice;
+    if (!(cin >> choice)) choice = 1;
 
     int rows = 10, cols = 10;
-    vector<vector<char>> grid(rows, vector<char>(cols));
-    int startR = -1, startC = -1;
+    vector<vector<char>> grid;
 
-    for (int i = 0; i < rows; i++) {
-        int col = 0;
-        for (char ch : demo[i]) {
-            if (ch != ' ') {
-                grid[i][col] = ch;
-                if (ch == 'E') { startR = i; startC = col; }
-                col++;
+    if (choice == 1) {
+        vector<string> demo = {
+            "E R R X A X X R R R",
+            "R X R R R X R X R R",
+            "A R R X O R R O R A",
+            "R R X R R R X R R R",
+            "X R R R X R R R X R",
+            "R R O R R X R R R R",
+            "R X R R R R X R O R",
+            "A R R X R R R R R A",
+            "R R R R O R R X R R",
+            "X R R R R R R R A R"
+        }; // R=Road, X=Obstacle, A=Available, O=Occupied, E=Entrance
+        for (auto& line : demo) {
+            vector<char> row;
+            for (char ch : line) {
+                if (ch != ' ') row.push_back(ch);
+            }
+            grid.push_back(row);
+        }
+    } else {
+        cout << "Enter Rows and Columns: ";
+        cin >> rows >> cols;
+        grid.assign(rows, vector<char>(cols));
+        cout << "Enter grid elements:\n";
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                cin >> grid[i][j];
             }
         }
     }
 
+    // Display Grid
+    cout << "Parking Grid:\n";
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            cout << grid[i][j] << (j + 1 < cols ? " " : "");
+        }
+        cout << "\n";
+    }
+    cout << "\n";
+
+    // Locate entrance 'E'
+    int startR = -1, startC = -1;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (grid[i][j] == 'E') {
+                startR = i;
+                startC = j;
+            }
+        }
+    }
+
+    if (startR == -1) {
+        cout << "Error: No entrance 'E' found!\n";
+        return 0;
+    }
+
+    // BFS to find nearest available parking spot 'A'
     queue<pair<int, int>> q;
     vector<vector<bool>> visited(rows, vector<bool>(cols, false));
     vector<vector<pair<int, int>>> parent(rows, vector<pair<int, int>>(cols, {-1, -1}));
 
     q.push({startR, startC});
     visited[startR][startC] = true;
+
     pair<int, int> goal = {-1, -1};
 
     while (!q.empty()) {
-        auto [r, c] = q.front();
+        auto curr = q.front();
         q.pop();
+        int r = curr.first;
+        int c = curr.second;
 
+        // If available parking spot reached
         if (grid[r][c] == 'A') {
             goal = {r, c};
             break;
         }
 
         for (int i = 0; i < 4; i++) {
-            int nr = r + dr[i], nc = c + dc[i];
+            int nr = r + dr[i];
+            int nc = c + dc[i];
+
+            // Valid bounds & traversable cell ('R', 'A', 'E')
             if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
                 if (!visited[nr][nc] && grid[nr][nc] != 'X' && grid[nr][nc] != 'O') {
                     visited[nr][nc] = true;
@@ -332,10 +409,11 @@ int main() {
     }
 
     if (goal.first == -1) {
-        cout << "No reachable parking space found.\n";
+        cout << "No reachable available parking space found.\n";
         return 0;
     }
 
+    // Reconstruct path
     vector<pair<int, int>> path;
     pair<int, int> curr = goal;
     while (curr != make_pair(-1, -1)) {
@@ -352,6 +430,7 @@ int main() {
         if (i + 1 < (int)path.size()) cout << " -> ";
     }
     cout << "\n";
+
     return 0;
 }
 ```
@@ -378,139 +457,735 @@ int main() {
 ```cpp
 #include <iostream>
 #include <vector>
-#include <string>
 #include <queue>
-#include <map>
 #include <algorithm>
 using namespace std;
 
-const int ROWS = 10, COLS = 10;
-int dr[] = {-1, 0, 1, 0}; // Up, Right, Down, Left
+const int N = 10;
+
+// Movement priority:
+// Up -> Right -> Down -> Left
+int dr[] = {-1, 0, 1, 0};
 int dc[] = {0, 1, 0, -1};
 
-int countDirty(const vector<vector<char>>& g) {
-    int cnt = 0;
-    for (int i = 0; i < ROWS; i++)
-        for (int j = 0; j < COLS; j++)
-            if (g[i][j] == 'D') cnt++;
-    return cnt;
+// Count how many dirty cells are present
+int countDirty(vector<vector<char>>& grid) {
+    int count = 0;
+
+    for (auto &row : grid)
+        for (char cell : row)
+            if (cell == 'D')
+                count++;
+
+    return count;
 }
 
-// 1. Simple Reflex Agent
-void runSimpleReflex(vector<vector<char>> g, int r, int c) {
-    int totalDirty = countDirty(g), cleaned = 0, mov = 0, actions = 0;
-    map<pair<int, int>, int> visits;
-    visits[{r, c}] = 1;
+/*
+    1. SIMPLE REFLEX AGENT
 
-    for (int step = 0; step < 1000 && cleaned < totalDirty; step++) {
-        if (g[r][c] == 'D') {
-            g[r][c] = 'C';
-            cleaned++; actions++;
+    Idea:
+    - Agent only looks at the CURRENT cell.
+    - If current cell is dirty -> clean it.
+    - Otherwise -> move using fixed priority:
+      Up, Right, Down, Left.
+    - It does NOT remember visited cells.
+    - It does NOT plan a path.
+
+    This can cause unnecessary/repeated movements.
+*/
+void simpleReflex(vector<vector<char>> grid, int r, int c) {
+
+    int totalDirty = countDirty(grid);
+    int cleaned = 0;
+    int moves = 0;
+
+    while (cleaned < totalDirty) {
+
+        // Rule 1: If current cell is dirty, clean it
+        if (grid[r][c] == 'D') {
+            grid[r][c] = 'C';
+            cleaned++;
             continue;
         }
+
+        // Rule 2: If cell is clean, move in fixed priority
         bool moved = false;
+
         for (int i = 0; i < 4; i++) {
-            int nr = r + dr[i], nc = c + dc[i];
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && g[nr][nc] != 'X') {
-                r = nr; c = nc;
-                mov++; actions++;
-                visits[{r, c}]++;
+
+            int nr = r + dr[i];
+            int nc = c + dc[i];
+
+            // Move only if:
+            // 1. Inside the grid
+            // 2. Not an obstacle ('X')
+            if (nr >= 0 && nr < N &&
+                nc >= 0 && nc < N &&
+                grid[nr][nc] != 'X') {
+
+                r = nr;
+                c = nc;
+                moves++;
+
                 moved = true;
                 break;
             }
         }
-        if (!moved) break;
+
+        // Stop if no valid movement is possible
+        if (!moved)
+            break;
     }
 
-    int repeated = 0;
-    for (auto& [pt, cnt] : visits) if (cnt > 1) repeated += (cnt - 1);
-
     cout << "--- Simple Reflex Agent ---\n";
-    cout << "Dirty cells cleaned: " << cleaned << "\nMovements: " << mov
-         << "\nTotal actions: " << actions << "\nRepeated visits: " << repeated << "\n\n";
+    cout << "Dirty cells cleaned: " << cleaned << '\n';
+    cout << "Movements: " << moves << "\n\n";
 }
 
-// Helper: BFS for Model-Based Agent to find nearest 'D'
-vector<pair<int, int>> findNearestDirty(const vector<vector<char>>& g, int sR, int sC) {
-    queue<pair<int, int>> q;
-    vector<vector<bool>> vis(ROWS, vector<bool>(COLS, false));
-    vector<vector<pair<int, int>>> parent(ROWS, vector<pair<int, int>>(COLS, {-1, -1}));
 
-    q.push({sR, sC});
-    vis[sR][sC] = true;
-    pair<int, int> target = {-1, -1};
+/*
+    BFS HELPER
+
+    Goal:
+    Find the SHORTEST PATH from the current position
+    to the NEAREST dirty cell.
+
+    BFS explores cells level by level:
+
+        Start
+          |
+       distance 1
+          |
+       distance 2
+          |
+       distance 3 ...
+
+    Therefore, the first dirty cell found is the
+    nearest reachable dirty cell.
+*/
+vector<pair<int,int>> bfs(vector<vector<char>>& grid,
+                          int sr, int sc) {
+
+    queue<pair<int,int>> q;
+
+    // visited prevents visiting the same cell again
+    bool visited[N][N] = {};
+
+    // parent[x][y] stores the previous cell
+    // from which we reached (x,y)
+    pair<int,int> parent[N][N];
+
+    q.push({sr, sc});
+    visited[sr][sc] = true;
+
+    pair<int,int> target = {-1, -1};
 
     while (!q.empty()) {
-        auto [r, c] = q.front(); q.pop();
-        if (g[r][c] == 'D') { target = {r, c}; break; }
 
+        auto [r, c] = q.front();
+        q.pop();
+
+        // If this cell is dirty, we found our target
+        if (grid[r][c] == 'D') {
+            target = {r, c};
+            break;
+        }
+
+        // Try all 4 directions
         for (int i = 0; i < 4; i++) {
-            int nr = r + dr[i], nc = c + dc[i];
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && g[nr][nc] != 'X' && !vis[nr][nc]) {
-                vis[nr][nc] = true;
+
+            int nr = r + dr[i];
+            int nc = c + dc[i];
+
+            if (nr >= 0 && nr < N &&
+                nc >= 0 && nc < N &&
+                grid[nr][nc] != 'X' &&
+                !visited[nr][nc]) {
+
+                visited[nr][nc] = true;
+
+                // Remember where we came from
                 parent[nr][nc] = {r, c};
+
                 q.push({nr, nc});
             }
         }
     }
-    if (target.first == -1) return {};
 
-    vector<pair<int, int>> path;
-    pair<int, int> curr = target;
-    while (curr != make_pair(sR, sC)) {
-        path.push_back(curr);
-        curr = parent[curr.first][curr.second];
+    // No reachable dirty cell
+    if (target.first == -1)
+        return {};
+
+    /*
+        Reconstruct path.
+
+        Example:
+
+        S -> A -> B -> D
+
+        parent[D] = B
+        parent[B] = A
+        parent[A] = S
+
+        So we go backwards and then reverse the path.
+    */
+    vector<pair<int,int>> path;
+
+    while (target != make_pair(sr, sc)) {
+        path.push_back(target);
+        target = parent[target.first][target.second];
     }
-    reverse(path.begin(), path.end());
-    return path;
-}
 
-// 2. Model-Based Reflex Agent
-void runModelBased(vector<vector<char>> g, int r, int c) {
-    int totalDirty = countDirty(g), cleaned = 0, mov = 0, actions = 0;
-    map<pair<int, int>, int> visits;
-    visits[{r, c}] = 1;
+    reverse(path.begin(), path.end());
+
+    return path;
+} // returns path from current position to nearest dirty cell, empty if no dirty cell is reachable
+
+
+/*
+    2. MODEL-BASED REFLEX AGENT
+
+    Idea:
+    - Agent maintains information about the environment.
+    - Instead of blindly moving, it searches for
+      the nearest dirty cell.
+    - BFS is used to find the shortest path.
+    - Agent then moves one step along that path.
+    - Repeat until all reachable dirty cells are cleaned.
+*/
+void modelBased(vector<vector<char>> grid, int r, int c) {
+
+    int totalDirty = countDirty(grid);
+    int cleaned = 0;
+    int moves = 0;
 
     while (cleaned < totalDirty) {
-        if (g[r][c] == 'D') {
-            g[r][c] = 'C';
-            cleaned++; actions++;
+
+        // If current cell is dirty -> clean it
+        if (grid[r][c] == 'D') {
+            grid[r][c] = 'C';
+            cleaned++;
             continue;
         }
-        auto path = findNearestDirty(g, r, c);
-        if (path.empty()) break;
 
-        r = path[0].first; c = path[0].second;
-        mov++; actions++;
-        visits[{r, c}]++;
+        // Find shortest path to nearest dirty cell
+        vector<pair<int,int>> path = bfs(grid, r, c);
+
+        // No dirty cell is reachable
+        if (path.empty())
+            break;
+
+        // Move only ONE step along the planned path
+        r = path[0].first;
+        c = path[0].second;
+
+        moves++;
     }
 
-    int repeated = 0;
-    for (auto& [pt, cnt] : visits) if (cnt > 1) repeated += (cnt - 1);
-
     cout << "--- Model-Based Reflex Agent ---\n";
-    cout << "Dirty cells cleaned: " << cleaned << "\nMovements: " << mov
-         << "\nTotal actions: " << actions << "\nRepeated visits: " << repeated << "\n\n";
+    cout << "Dirty cells cleaned: " << cleaned << '\n';
+    cout << "Movements: " << moves << "\n\n";
+
+    // Display final grid
+    cout << "--- Final Grid ---\n";
+
+    for (auto &row : grid) {
+        for (char cell : row)
+            cout << cell << ' ';
+
+        cout << '\n';
+    }
+}
+
+
+int main() {
+
+    /*
+        GRID REPRESENTATION
+
+        S = Starting position
+        C = Clean cell
+        D = Dirty cell
+        X = Obstacle
+
+        Agent must clean all reachable D cells
+        while avoiding X cells.
+    */
+    vector<vector<char>> grid = {
+
+        {'S','C','D','C','X','C','C','D','C','C'},
+        {'C','X','C','C','C','C','X','C','D','C'},
+        {'D','C','C','X','D','C','C','C','C','C'},
+        {'C','C','X','C','C','C','D','X','C','C'},
+        {'C','D','C','C','X','C','C','C','C','D'},
+        {'C','C','C','D','C','C','X','C','C','C'},
+        {'X','C','C','C','C','D','C','C','X','C'},
+        {'C','C','D','X','C','C','C','D','C','C'},
+        {'C','X','C','C','D','C','C','C','C','C'},
+        {'D','C','C','C','C','X','C','C','D','C'}
+    };
+
+    // Starting position of the agent
+    int startRow = 0;
+    int startCol = 0;
+
+    // Run both AI agents on the same environment
+    simpleReflex(grid, startRow, startCol);
+
+    modelBased(grid, startRow, startCol);
+
+    return 0;
 }
 ```
 
 ---
 
-### P5: Delivery Robot (Goal-Based vs. Utility-Based)
-- **Problem**: Robot must navigate from Start (`S`) $\to$ Package (`P`) $\to$ Goal (`G`).
-- **Goal-Based Agent**: Uses BFS to find the path with the **minimum number of movements** (step count).
-- **Utility-Based Agent**: Uses Uniform Cost Search / Dijkstra to find the path with the **minimum total cost** using the multi-attribute cost function:
+### P5: Delivery Robot (Goal-Based BFS vs. Utility-Based Cost Search)
+- **Problem**: Robot starts at $S$, picks up package at $P$, delivers to destination $G$.
+- **Goal-Based Agent**: Uses BFS ($S \to P$ then $P \to G$) to minimize **movement steps**.
+- **Utility-Based Agent**: Uses UCS/Dijkstra to minimize **total utility cost**:
   $$\text{Cost} = 0.4 \times \text{Distance} + 0.3 \times \text{Energy} + 0.2 \times \text{Risk} + 0.1 \times \text{Traffic}$$
-  - **Key Observation**: The Utility-Based Agent may choose a route with **more physical steps** to avoid high-risk or congested road shortcuts!
+  - Special shortcut cells $(2,6)$ and $(2,7)$ have higher energy (5), risk (4), traffic (3).
+  - **Key Observation**: Utility-based agent may take more physical steps if it results in a cheaper, safer route.
 
-#### C++ Cost Function & Search:
+#### C++ Code:
 ```cpp
-double getCellCost(int r, int c) {
-    double dist = 1.0, energy = 1.0, risk = 1.0, traffic = 1.0;
-    if ((r == 2 && c == 7) || (r == 2 && c == 6)) { // Congested shortcut
-        energy = 5.0; risk = 4.0; traffic = 3.0;
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+#include <iomanip>
+using namespace std;
+
+const int N = 10;
+
+using Point = pair<int, int>;
+
+// Movement: Up, Right, Down, Left
+int dr[] = {-1, 0, 1, 0};
+int dc[] = {0, 1, 0, -1};
+
+
+/*
+    Convert a path into readable form.
+
+    Example:
+    (0,0) -> (0,1) -> (1,1) -> ...
+*/
+void printPath(const vector<Point>& path) {
+
+    if (path.empty()) {
+        cout << "No Path Found";
+        return;
     }
-    return (0.4 * dist) + (0.3 * energy) + (0.2 * risk) + (0.1 * traffic);
+
+    for (int i = 0; i < path.size(); i++) {
+
+        cout << "(" << path[i].first
+             << "," << path[i].second << ")";
+
+        if (i + 1 < path.size())
+            cout << " -> ";
+    }
+}
+
+
+/*
+    GOAL-BASED AGENT
+    ----------------
+
+    Goal:
+    Reach a specific destination.
+
+    Here:
+        S = Start
+        P = Package
+        G = Destination
+
+    The agent first goes:
+        S -> P
+
+    Then:
+        P -> G
+
+    BFS is used because every movement has the same cost.
+
+    BFS gives the SHORTEST PATH
+    in terms of number of movements.
+*/
+vector<Point> bfs(const vector<vector<char>>& grid,
+                  Point start,
+                  Point goal) {
+
+    queue<Point> q;
+
+    // Stores whether a cell has already been visited
+    bool visited[N][N] = {};
+
+    // Stores the previous cell in the path
+    Point parent[N][N];
+
+    q.push(start);
+    visited[start.first][start.second] = true;
+
+    while (!q.empty()) {
+
+        Point curr = q.front();
+        q.pop();
+
+        int r = curr.first;
+        int c = curr.second;
+
+        // Goal reached
+        if (curr == goal)
+            break;
+
+        // Try all 4 directions
+        for (int i = 0; i < 4; i++) {
+
+            int nr = r + dr[i];
+            int nc = c + dc[i];
+
+            // Valid cell and not an obstacle
+            if (nr >= 0 && nr < N &&
+                nc >= 0 && nc < N &&
+                grid[nr][nc] != 'X' &&
+                !visited[nr][nc]) {
+
+                visited[nr][nc] = true;
+
+                // Remember where we came from
+                parent[nr][nc] = {r, c};
+
+                q.push({nr, nc});
+            }
+        }
+    }
+
+    // Goal cannot be reached
+    if (!visited[goal.first][goal.second])
+        return {};
+
+    /*
+        Reconstruct path.
+
+        Start from goal and keep going to parent
+        until we reach the starting cell.
+    */
+    vector<Point> path;
+
+    Point curr = goal;
+
+    while (curr != start) {
+        path.push_back(curr);
+        curr = parent[curr.first][curr.second];
+    }
+
+    // Add starting point
+    path.push_back(start);
+
+    // Currently path is G -> ... -> S
+    // Reverse it to get S -> ... -> G
+    reverse(path.begin(), path.end());
+
+    return path;
+}
+
+
+/*
+    CELL COST
+    ---------
+
+    Utility-Based Agent does not only care about
+    number of movements.
+
+    Every cell has a cost:
+
+        Cost =
+        0.4 * Distance
+        + 0.3 * Energy
+        + 0.2 * Risk
+        + 0.1 * Traffic
+
+    Normal cell:
+        Distance = 1
+        Energy   = 1
+        Risk     = 1
+        Traffic  = 1
+
+    Special cells (2,6) and (2,7):
+        Higher energy, risk and traffic
+        -> Therefore they are expensive.
+*/
+double cellCost(int r, int c) {
+
+    double distance = 1;
+    double energy = 1;
+    double risk = 1;
+    double traffic = 1;
+
+    // High-cost / risky cells
+    if ((r == 2 && c == 6) ||
+        (r == 2 && c == 7)) {
+
+        energy = 5;
+        risk = 4;
+        traffic = 3;
+    }
+
+    return 0.4 * distance +
+           0.3 * energy +
+           0.2 * risk +
+           0.1 * traffic;
+}
+
+
+/*
+    UTILITY-BASED AGENT
+    -------------------
+
+    Goal:
+    Find the path with the LOWEST TOTAL COST.
+
+    We use Uniform Cost Search (UCS).
+
+    UCS is basically Dijkstra's algorithm when
+    all edge costs are non-negative.
+
+    Important:
+
+    BFS:
+        Minimizes number of movements.
+
+    UCS:
+        Minimizes total cost.
+
+    Therefore UCS may take MORE steps if that
+    results in a cheaper/safer route.
+*/
+pair<vector<Point>, double> ucs(
+    const vector<vector<char>>& grid,
+    Point start,
+    Point goal) {
+
+    // (cost, position)
+    using Node = pair<double, Point>;
+
+    // Always process the lowest-cost node first
+    priority_queue<Node,
+                   vector<Node>,
+                   greater<Node>> pq;
+
+    // Minimum cost required to reach each cell
+    double dist[N][N];
+
+    // Parent array for path reconstruction
+    Point parent[N][N];
+
+    // Initialize distances
+    for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+            dist[i][j] = 1e9;
+
+    // Starting cell has cost 0
+    dist[start.first][start.second] = 0;
+
+    pq.push({0, start});
+
+    while (!pq.empty()) {
+
+        auto [cost, curr] = pq.top();
+        pq.pop();
+
+        int r = curr.first;
+        int c = curr.second;
+
+        // Ignore outdated priority queue entries
+        if (cost > dist[r][c])
+            continue;
+
+        // Goal reached
+        if (curr == goal)
+            break;
+
+        // Try all 4 directions
+        for (int i = 0; i < 4; i++) {
+
+            int nr = r + dr[i];
+            int nc = c + dc[i];
+
+            // Valid and not obstacle
+            if (nr >= 0 && nr < N &&
+                nc >= 0 && nc < N &&
+                grid[nr][nc] != 'X') {
+
+                // Cost of reaching new cell
+                double newCost =
+                    cost + cellCost(nr, nc);
+
+                // Found a cheaper route
+                if (newCost < dist[nr][nc]) {
+
+                    dist[nr][nc] = newCost;
+
+                    // Store parent for path reconstruction
+                    parent[nr][nc] = {r, c};
+
+                    pq.push({newCost, {nr, nc}});
+                }
+            }
+        }
+    }
+
+    // Goal cannot be reached
+    if (dist[goal.first][goal.second] == 1e9)
+        return {{}, 1e9};
+
+
+    // Reconstruct path
+    vector<Point> path;
+
+    Point curr = goal;
+
+    while (curr != start) {
+        path.push_back(curr);
+        curr = parent[curr.first][curr.second];
+    }
+
+    path.push_back(start);
+
+    // Reverse: S -> ... -> G
+    reverse(path.begin(), path.end());
+
+    return {path, dist[goal.first][goal.second]};
+}
+
+
+int main() {
+
+    /*
+        GRID
+
+        S = Start
+        P = Package
+        G = Destination
+        R = Normal road
+        X = Obstacle
+
+        Task:
+
+        1. Start at S
+        2. Pick up package at P
+        3. Deliver package to G
+
+        Two agents solve this problem differently:
+
+        Goal-Based:
+            Find shortest route.
+
+        Utility-Based:
+            Find cheapest route.
+    */
+
+    vector<vector<char>> grid = {
+
+        {'S','R','R','X','R','R','R','R','R','R'},
+        {'X','X','R','R','R','X','R','X','R','R'},
+        {'R','R','R','X','R','R','R','P','R','R'},
+        {'R','X','R','R','R','X','R','R','R','X'},
+        {'R','R','R','X','R','R','X','R','R','R'},
+        {'X','R','R','R','R','R','R','R','X','R'},
+        {'R','R','X','R','X','R','R','R','R','R'},
+        {'R','R','R','R','R','X','R','X','R','R'},
+        {'R','X','R','R','R','R','R','R','R','R'},
+        {'R','R','R','X','R','R','R','R','X','G'}
+    };
+
+    Point S = {0, 0};
+    Point P = {2, 7};
+    Point G = {9, 9};
+
+
+    /*
+        1. GOAL-BASED AGENT
+
+        Find:
+            S -> P
+            P -> G
+
+        BFS gives shortest number of movements.
+    */
+
+    vector<Point> path1 = bfs(grid, S, P);
+    vector<Point> path2 = bfs(grid, P, G);
+
+    int moves1 = path1.empty() ? 0 : path1.size() - 1;
+    int moves2 = path2.empty() ? 0 : path2.size() - 1;
+
+    cout << "--- Goal-Based Agent ---\n";
+
+    cout << "Route to Package: ";
+    printPath(path1);
+    cout << "\n";
+
+    cout << "Movements to Package: "
+         << moves1 << "\n";
+
+    cout << "Route to Destination: ";
+    printPath(path2);
+    cout << "\n";
+
+    cout << "Movements to Destination: "
+         << moves2 << "\n";
+
+    cout << "Total Movements: "
+         << moves1 + moves2 << "\n\n";
+
+
+    /*
+        2. UTILITY-BASED AGENT
+
+        UCS finds the path with minimum TOTAL COST.
+
+        It may use more movements than BFS,
+        but it can avoid expensive/risky cells.
+    */
+
+    auto result1 = ucs(grid, S, P);
+    auto result2 = ucs(grid, P, G);
+
+    vector<Point> ucsPath1 = result1.first;
+    vector<Point> ucsPath2 = result2.first;
+
+    double cost1 = result1.second;
+    double cost2 = result2.second;
+
+    int ucsMoves =
+        (ucsPath1.size() - 1) +
+        (ucsPath2.size() - 1);
+
+    double totalCost = cost1 + cost2;
+
+
+    cout << "--- Utility-Based Agent ---\n";
+
+    cout << "Route to Package: ";
+    printPath(ucsPath1);
+    cout << "\n";
+
+    cout << "Route to Destination: ";
+    printPath(ucsPath2);
+    cout << "\n";
+
+    cout << "Total Movements: "
+         << ucsMoves << "\n";
+
+    cout << fixed << setprecision(1);
+
+    cout << "Total Cost: "
+         << totalCost << "\n";
+
+    return 0;
 }
 ```
 
@@ -521,46 +1196,331 @@ double getCellCost(int r, int c) {
 ---
 
 ### P6: Cost-Aware Delivery Robot (Uniform Cost Search - UCS)
-- **Concept**: Explores nodes in increasing order of accumulated path cost $g(n)$ using a **Min-Heap Priority Queue** (`std::priority_queue<..., greater>`).
-- **Terrain Costs**:
+- **Concept**: Explores nodes in increasing order of accumulated path cost $g(n)$ using a **Min-Heap Priority Queue** (`std::priority_queue<Node, vector<Node>, greater<Node>>`).
+- **Terrain Entry Costs**:
   - `S` = 0 (Start)
   - `G` = 1 (Goal)
   - `R` = 1 (Normal road)
-  - `M` = 3 (Moderate/rough)
+  - `M` = 3 (Mud / rough surface)
   - `T` = 5 (Traffic congested)
   - `X` = Blocked
-- **Optimality**: UCS guarantees optimal cost if all step costs $c \ge \epsilon > 0$.
+- **Optimality**: UCS guarantees finding the **minimum-cost route**.
 
-#### C++ Core UCS Loop:
+#### C++ Code:
 ```cpp
-using Node = pair<int, pair<int, int>>; // (g(n), (r, c))
-priority_queue<Node, vector<Node>, greater<Node>> pq;
-vector<vector<int>> gCost(ROWS, vector<int>(COLS, 1e9));
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+using namespace std;
 
-pq.push({0, start});
-gCost[start.first][start.second] = 0;
+const int N = 10;
 
-while (!pq.empty()) {
-    auto [cost, curr] = pq.top(); pq.pop();
-    int r = curr.first, c = curr.second;
+using Point = pair<int, int>;
 
-    if (expanded[r][c]) continue; // Skip stale entries
-    expanded[r][c] = true;
-    expansionOrder.push_back(curr);
+// Movement: Up, Down, Left, Right
+int dr[] = {-1, 1, 0, 0};
+int dc[] = {0, 0, -1, 1};
 
-    if (curr == goal) break;
 
-    for (int i = 0; i < 4; i++) {
-        int nr = r + dr[i], nc = c + dc[i];
-        if (isValid(nr, nc)) {
-            int newCost = cost + getCost(grid[nr][nc]);
-            if (newCost < gCost[nr][nc]) {
-                gCost[nr][nc] = newCost;
-                parent[nr][nc] = {r, c};
-                pq.push({newCost, {nr, nc}});
+/*
+    COST OF ENTERING A CELL
+
+    R = Road     -> cost 1
+    M = Mud      -> cost 3
+    T = Terrain  -> cost 5
+    G = Goal     -> cost 1
+    X = Obstacle -> cannot enter
+
+    UCS chooses the path with the
+    minimum TOTAL cost.
+*/
+int cost(char cell) {
+
+    switch (cell) {
+        case 'R': return 1;
+        case 'M': return 3;
+        case 'T': return 5;
+        case 'G': return 1;
+        default:  return 1e9; // X or any other invalid cell
+    }
+}
+
+
+int main() {
+
+    /*
+        GRID
+
+        S = Start
+        G = Goal
+        R = Normal road
+        M = Mud
+        T = Difficult terrain
+        X = Obstacle
+
+        Problem:
+        Find the minimum-cost path from S to G.
+    */
+    vector<vector<char>> grid = {
+
+        {'S','R','R','T','T','R','R','R','R','R'},
+        {'X','X','R','T','X','R','X','X','X','R'},
+        {'R','R','R','T','R','R','R','R','X','R'},
+        {'R','X','X','T','R','X','X','R','X','R'},
+        {'R','R','R','R','R','R','X','R','R','R'},
+        {'R','X','X','X','X','R','X','X','X','R'},
+        {'R','R','R','R','X','R','R','R','R','R'},
+        {'X','X','X','R','X','X','X','X','X','R'},
+        {'R','R','R','R','R','R','R','R','R','R'},
+        {'X','X','X','X','X','X','X','X','X','G'}
+    };
+
+
+    Point start = {0, 0};
+    Point goal = {9, 9};
+
+
+    /*
+        UNIFORM COST SEARCH (UCS)
+        -------------------------
+
+        UCS always expands the node having
+        the SMALLEST PATH COST.
+
+        Priority Queue stores:
+
+            {cost, position}
+
+        Example:
+
+            {3, (1,2)}
+            {5, (2,3)}
+            {8, (4,5)}
+
+        Node with cost 3 is processed first.
+
+        This is essentially Dijkstra's algorithm
+        for non-negative edge costs.
+    */
+
+    using Node = pair<int, Point>;
+
+    // Min-heap: smallest cost comes first
+    priority_queue<Node,
+                   vector<Node>,
+                   greater<Node>> pq;
+
+
+    /*
+        gCost[r][c]
+
+        Minimum known cost to reach cell (r,c).
+
+        Initially:
+            infinity for every cell.
+
+        Start:
+            cost = 0
+    */
+    vector<vector<int>> gCost(
+        N, vector<int>(N, 1e9)
+    );
+
+
+    /*
+        parent[r][c]
+
+        Stores the previous cell from which
+        we reached (r,c).
+
+        Used later to reconstruct the path.
+    */
+    vector<vector<Point>> parent(
+        N, vector<Point>(N, {-1, -1})
+    );
+
+
+    // Keeps track of cells already expanded
+    vector<vector<bool>> visited(
+        N, vector<bool>(N, false)
+    );
+
+
+    // Stores order in which UCS expands nodes
+    vector<Point> order;
+
+
+    // Start UCS from the starting cell
+    pq.push({0, start});
+    gCost[start.first][start.second] = 0;
+
+
+    while (!pq.empty()) {
+
+        // Get cell with minimum cost
+        auto [currCost, curr] = pq.top();
+        pq.pop();
+
+        int r = curr.first;
+        int c = curr.second;
+
+
+        // Ignore if already processed
+        if (visited[r][c])
+            continue;
+
+        visited[r][c] = true;
+
+        // Save expansion order
+        order.push_back(curr);
+
+
+        // Goal reached
+        if (curr == goal)
+            break;
+
+
+        /*
+            Check all 4 neighboring cells.
+        */
+        for (int i = 0; i < 4; i++) {
+
+            int nr = r + dr[i];
+            int nc = c + dc[i];
+
+
+            // Check:
+            // 1. Inside grid
+            // 2. Not an obstacle
+            if (nr >= 0 && nr < N &&
+                nc >= 0 && nc < N &&
+                grid[nr][nc] != 'X') {
+
+
+                /*
+                    New cost =
+                    cost so far + cost of entering
+                    the neighboring cell.
+                */
+                int newCost =
+                    currCost + cost(grid[nr][nc]);
+
+
+                /*
+                    If this is cheaper than the
+                    previously known cost, update it.
+                */
+                if (newCost < gCost[nr][nc]) {
+
+                    gCost[nr][nc] = newCost;
+
+                    // Remember previous cell
+                    parent[nr][nc] = {r, c};
+
+                    // Add new state to priority queue
+                    pq.push({
+                        newCost,
+                        {nr, nc}
+                    });
+                }
             }
         }
     }
+
+
+    /*
+        PRINT EXPANSION ORDER
+
+        This shows the order in which UCS
+        explored the cells.
+    */
+    cout << "--- Uniform Cost Search ---\n\n";
+
+    cout << "Nodes expanded:\n";
+
+    for (int i = 0; i < order.size(); i++) {
+
+        cout << "("
+             << order[i].first << ", "
+             << order[i].second << ")";
+
+        if (i + 1 < order.size())
+            cout << " -> ";
+    }
+
+    cout << "\n";
+
+
+    // Goal was never reached
+    if (!visited[goal.first][goal.second]) {
+
+        cout << "\nNo path exists.\n";
+        return 0;
+    }
+
+
+    /*
+        RECONSTRUCT PATH
+
+        Start from G and repeatedly follow
+        parent[] until we reach S.
+
+        Example:
+
+            G <- C <- B <- A <- S
+
+        Reverse it:
+
+            S -> A -> B -> C -> G
+    */
+    vector<Point> path;
+
+    Point curr = goal;
+
+    while (curr != start) {
+
+        path.push_back(curr);
+
+        curr = parent[
+            curr.first
+        ][curr.second];
+    }
+
+    // Add starting point
+    path.push_back(start);
+
+    // Convert G -> S into S -> G
+    reverse(path.begin(), path.end());
+
+
+    /*
+        PRINT FINAL ANSWER
+    */
+
+    cout << "\nMinimum-cost path:\n";
+
+    for (int i = 0; i < path.size(); i++) {
+
+        cout << "("
+             << path[i].first << ", "
+             << path[i].second << ")";
+
+        if (i + 1 < path.size())
+            cout << " -> ";
+    }
+
+    cout << "\n";
+
+    cout << "\nTotal movements: "
+         << path.size() - 1 << "\n";
+
+    cout << "Total path cost: "
+         << gCost[goal.first][goal.second]
+         << "\n";
+
+
+    return 0;
 }
 ```
 
@@ -570,41 +1530,344 @@ while (!pq.empty()) {
 - **Concept**: Depth-First Search with a hard depth cutoff $L$.
 - **Fixed Successor Order**: **Right $\to$ Down $\to$ Left $\to$ Up**.
 - **Three Possible Returns**:
-  1. `SUCCESS`: Goal $G$ found at depth $\le L$.
-  2. `CUTOFF`: Reached depth $L$ without reaching $G$ (solution lies deeper).
-  3. `FAILURE`: Search space completely exhausted without finding $G$.
+  1. `SUCCESS` ($1$): Goal $G$ found at depth $\le L$.
+  2. `CUTOFF` ($0$): Reached depth $L$ without reaching $G$ (solution lies deeper).
+  3. `FAILURE` ($-1$): Search space exhausted without finding $G$.
 - **Two Lab Test Runs**:
   - $L = 18 \implies$ **CUTOFF** (True shortest route needs 22 steps).
   - $L = 25 \implies$ **SUCCESS** (Found path in 22 steps).
 
-#### C++ DLS Recursive Function:
+#### C++ Code:
 ```cpp
-const int SUCCESS = 1, CUTOFF = 0, FAILURE = -1;
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
 
-int dls(const vector<vector<char>>& grid, Point curr, Point goal, int depth, int limit, vector<Point>& path) {
-    expansionOrder.push_back(curr);
-    maxDepthReached = max(maxDepthReached, depth);
+const int N = 10;
 
-    if (curr == goal) { solutionPath = path; return SUCCESS; }
-    if (depth == limit) return CUTOFF;
+// Movement priority: Right -> Down -> Left -> Up
+int dr[] = {0, 1, 0, -1};
+int dc[] = {1, 0, -1, 0};
 
-    bool cutoffOccurred = false;
+using Point = pair<int, int>;
+
+
+/*
+    DLS RESULT
+
+    SUCCESS = Goal found
+    CUTOFF  = Search stopped because depth limit was reached
+    FAILURE = No path exists
+*/
+const int SUCCESS = 1;
+const int CUTOFF = 0;
+const int FAILURE = -1;
+
+
+// Stores the cells explored by DLS
+vector<Point> expanded;
+
+// Stores the current path
+vector<Point> solution;
+
+// Prevents the algorithm from visiting
+// the same cell again in the CURRENT path
+bool onPath[N][N];
+
+
+/*
+    DEPTH-LIMITED SEARCH (DLS)
+    --------------------------
+
+    DLS is basically DFS + a depth limit.
+
+    DFS:
+        Keep going deeper.
+
+    DLS:
+        Keep going deeper ONLY until
+        depth == limit.
+
+    Example:
+
+        S
+        |
+        A       depth = 1
+        |
+        B       depth = 2
+        |
+        G       depth = 3
+
+    If limit = 2:
+        G will NOT be searched.
+
+    If limit = 3:
+        G can be found.
+*/
+int dls(const vector<vector<char>>& grid,
+        Point curr,
+        Point goal,
+        int depth,
+        int limit,
+        vector<Point>& path) {
+
+    // Record that this node was expanded
+    expanded.push_back(curr);
+
+
+    // Goal found
+    if (curr == goal) {
+
+        solution = path;
+
+        return SUCCESS;
+    }
+
+
+    /*
+        If depth limit has been reached,
+        don't go any deeper.
+
+        This is the main difference
+        between DFS and DLS.
+    */
+    if (depth == limit)
+        return CUTOFF;
+
+
+    bool cutoffFound = false;
+
+    int r = curr.first;
+    int c = curr.second;
+
+
+    /*
+        Try all four possible movements.
+
+        Order:
+            Right
+            Down
+            Left
+            Up
+    */
     for (int i = 0; i < 4; i++) {
-        int nr = curr.first + dr[i], nc = curr.second + dc[i];
-        if (isValid(nr, nc) && !onPath[nr][nc]) {
+
+        int nr = r + dr[i];
+        int nc = c + dc[i];
+
+
+        /*
+            Move only if:
+            1. Inside grid
+            2. Not an obstacle
+            3. Not already present in current path
+        */
+        if (nr >= 0 && nr < N &&
+            nc >= 0 && nc < N &&
+            grid[nr][nc] != 'X' &&
+            !onPath[nr][nc]) {
+
+
+            // Mark cell as part of current path
             onPath[nr][nc] = true;
+
             path.push_back({nr, nc});
 
-            int res = dls(grid, {nr, nc}, goal, depth + 1, limit, path);
 
+            // Recursively search next cell
+            int result = dls(
+                grid,
+                {nr, nc},
+                goal,
+                depth + 1,
+                limit,
+                path
+            );
+
+
+            // Backtrack
             path.pop_back();
             onPath[nr][nc] = false;
 
-            if (res == SUCCESS) return SUCCESS;
-            if (res == CUTOFF) cutoffOccurred = true;
+
+            // Goal found
+            if (result == SUCCESS)
+                return SUCCESS;
+
+
+            // At least one branch hit depth limit
+            if (result == CUTOFF)
+                cutoffFound = true;
         }
     }
-    return cutoffOccurred ? CUTOFF : FAILURE;
+
+
+    /*
+        If any branch was stopped because of
+        depth limit -> return CUTOFF.
+
+        Otherwise -> no path exists from here.
+    */
+    return cutoffFound ? CUTOFF : FAILURE;
+}
+
+
+/*
+    RUN DLS WITH A GIVEN DEPTH LIMIT
+*/
+void runDLS(const vector<vector<char>>& grid, int limit) {
+
+    Point start = {0, 0};
+    Point goal = {9, 9};
+
+
+    cout << "--- Depth-Limited Search ---\n";
+    cout << "Depth Limit: " << limit << "\n";
+
+
+    // Reset previous run
+    expanded.clear();
+    solution.clear();
+
+    for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+            onPath[i][j] = false;
+
+
+    // Starting cell belongs to current path
+    onPath[start.first][start.second] = true;
+
+    vector<Point> path = {start};
+
+
+    // Start DLS
+    int result = dls(
+        grid,
+        start,
+        goal,
+        0,          // Starting depth
+        limit,
+        path
+    );
+
+
+    /*
+        PRINT EXPANSION ORDER
+    */
+    cout << "Nodes expanded:\n";
+
+    for (int i = 0; i < expanded.size(); i++) {
+
+        cout << "("
+             << expanded[i].first << ", "
+             << expanded[i].second << ")";
+
+        if (i + 1 < expanded.size())
+            cout << " -> ";
+    }
+
+    cout << "\n";
+
+
+    /*
+        PRINT RESULT
+    */
+
+    if (result == SUCCESS) {
+
+        cout << "Result: SUCCESS\n";
+
+        cout << "Route:\n";
+
+        for (int i = 0; i < solution.size(); i++) {
+
+            cout << "("
+                 << solution[i].first << ", "
+                 << solution[i].second << ")";
+
+            if (i + 1 < solution.size())
+                cout << " -> ";
+        }
+
+        cout << "\n";
+
+        cout << "Movements: "
+             << solution.size() - 1 << "\n";
+    }
+
+    else if (result == CUTOFF) {
+
+        cout << "Result: CUTOFF\n";
+        cout << "Goal was not found within depth "
+             << limit << "\n";
+    }
+
+    else {
+
+        cout << "Result: FAILURE\n";
+        cout << "Goal is not reachable.\n";
+    }
+
+    cout << "\n";
+}
+
+
+int main() {
+
+    /*
+        GRID
+
+        S = Start
+        G = Goal
+        R = Normal road
+        X = Obstacle
+
+        Task:
+        Find a path from S -> G.
+
+        DLS will search using DFS,
+        but it cannot go deeper than
+        the specified depth limit.
+    */
+
+    vector<vector<char>> grid = {
+
+        {'S','R','R','X','R','R','R','R','R','R'},
+        {'X','X','R','X','R','X','X','X','X','R'},
+        {'R','R','R','X','R','R','R','R','X','R'},
+        {'R','X','X','X','X','X','X','R','X','R'},
+        {'R','R','R','R','R','R','X','R','R','R'},
+        {'X','X','X','X','X','R','X','X','X','R'},
+        {'R','R','R','R','X','R','R','R','R','R'},
+        {'R','X','X','R','X','X','X','X','X','R'},
+        {'R','R','R','R','R','R','R','R','R','R'},
+        {'X','X','X','X','X','X','X','X','X','G'}
+    };
+
+
+    /*
+        Run DLS twice.
+
+        First:
+            limit = 18
+
+        Second:
+            limit = 25
+
+        If the solution needs more than 18
+        movements, the first run will return
+        CUTOFF.
+
+        The second run may find the goal.
+    */
+
+    runDLS(grid, 18);
+
+    runDLS(grid, 25);
+
+
+    return 0;
 }
 ```
 
@@ -628,37 +1891,36 @@ int dls(const vector<vector<char>>& grid, Point curr, Point goal, int depth, int
 ## 8. Expected Viva / Discussion Questions & Exact Answers
 
 ### Q1. Why can DLS fail even when a valid path to the goal exists?
-> **Answer**: DLS cuts off exploration at depth $L$. If all paths from $S$ to $G$ require more than $L$ moves (e.g., $L = 18$ while the true path is 22 moves), every branch hits `CUTOFF` before reaching $G$.
+> **Answer**: DLS stops expanding any branch once its depth reaches the limit $L$. If the shortest path from $S$ to $G$ requires more than $L$ moves (e.g. $L = 18$ while the true path needs 22 moves), the search hits a `CUTOFF` along every branch before it can ever reach $G$.
 
 ### Q2. How does increasing limit $L$ affect time and memory in DLS?
 > **Answer**:
-> - **Time**: Increases exponentially in worst case ($O(b^L)$) because deeper tree levels are searched.
-> - **Memory**: Grows only **linearly** ($O(b \cdot L)$) because only the active recursion path and its siblings are stored.
+> - **Time**: Increases exponentially in worst case ($O(b^L)$) because deeper tree levels are explored.
+> - **Memory**: Grows only **linearly** ($O(b \cdot L)$) because only the active recursion path and its unexpanded siblings are stored in memory.
 
 ### Q3. Is DLS guaranteed to return the shortest path?
 > **Answer**: **No.** DLS is depth-first and stops at the very **first** goal path it encounters under its fixed successor order (`Right -> Down -> Left -> Up`). It does not compare alternative paths to check if a shorter one exists.
 
 ### Q4. Why does a Simple Reflex Agent oscillate between cells?
-> **Answer**: Because it has **no memory (state)**. Once it cleans a dirty cell, the cell becomes clean. At the next step, based on its fixed rule priority (e.g., Up, Right, Down, Left), it moves back into the cell it just came from, creating an infinite loop between adjacent clean cells.
+> **Answer**: Because it has **no memory (state)**. Once it cleans a dirty cell, the cell becomes clean. At the next step, based on its fixed rule priority (e.g. Up, Right, Down, Left), it moves back into the cell it just came from, creating an infinite oscillation loop between adjacent clean cells.
 
 ### Q5. Why does UCS use a Priority Queue instead of a simple FIFO Queue?
-> **Answer**: A FIFO queue only guarantees shortest paths when all step costs are equal (1 unit). When terrain costs vary (e.g., Normal road = 1, Congested road = 5), a priority queue ensures the node with the **lowest accumulated cost $g(n)$** is always expanded first.
+> **Answer**: A FIFO queue only guarantees shortest paths when all step costs are equal (1 unit). When terrain costs vary (e.g. Normal road = 1, Mud = 3, Traffic = 5), a priority queue ensures the node with the **lowest accumulated cost $g(n)$** is always expanded first.
 
 ---
 
 ## 9. Common Exam Pitfalls & Tips
 
 1. **Matrix Indexing**:
-   - `grid[row][col]` where `row` is vertical (`y`) and `col` is horizontal (`x`).
+   - `grid[row][col]` where `row` is vertical and `col` is horizontal.
    - Move Up: `r - 1, c`
    - Move Down: `r + 1, c`
    - Move Left: `r, c - 1`
    - Move Right: `r, c + 1`
 2. **Cycle Prevention in DLS**:
-   - Always add `onPath[r][c] = true` before recursion, and **remove** it (`onPath[r][c] = false`) after returning (Backtracking).
-3. **Array vs. Coordinate Display**:
-   - Output coordinates as `(row, col)`.
-   - Remember: `Movements = Number of nodes in path - 1`.
+   - Always set `onPath[nr][nc] = true` before recursion, and backtrack with `onPath[nr][nc] = false` after returning.
+3. **Calculating Movements**:
+   - $\text{Movements} = \text{Path Size} - 1$ (since the starting node itself is not a movement).
 
 ---
-*Good luck with your Lab Test tomorrow! You have everything you need.* 🚀
+*Good luck with your Lab Test tomorrow! You are fully prepared.* 🚀
