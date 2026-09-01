@@ -41,8 +41,9 @@ void simpleReflex(vector<vector<char>> grid, int r, int c) {
     int totalDirty = countDirty(grid);
     int cleaned = 0;
     int moves = 0;
+    int maxSteps = 1000; // Limit steps to prevent infinite oscillation
 
-    while (cleaned < totalDirty) {
+    while (cleaned < totalDirty && moves < maxSteps) {
 
         // Rule 1: If current cell is dirty, clean it
         if (grid[r][c] == 'D') {

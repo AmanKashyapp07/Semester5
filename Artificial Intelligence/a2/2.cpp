@@ -27,12 +27,12 @@ void printPath(const vector<Point>& path) {
         return;
     }
 
-    for (int i = 0; i < path.size(); i++) {
+    for (int i = 0; i < (int)path.size(); i++) {
 
         cout << "(" << path[i].first
              << "," << path[i].second << ")";
 
-        if (i + 1 < path.size())
+        if (i + 1 < (int)path.size())
             cout << " -> ";
     }
 }
