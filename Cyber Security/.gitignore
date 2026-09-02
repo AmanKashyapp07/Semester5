@@ -1,0 +1,10 @@
+# Binaries
+list
+kem
+sig
+
+# Object files and temporary build artifacts
+*.o
+*.out
+*.dSYM/
+.DS_Store

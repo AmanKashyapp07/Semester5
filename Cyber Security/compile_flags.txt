@@ -1,0 +1,9 @@
+-std=c++17
+-I/opt/homebrew/include
+-I/opt/homebrew/opt/openssl@3/include
+-I/usr/local/include
+-L/opt/homebrew/lib
+-L/opt/homebrew/opt/openssl@3/lib
+-L/usr/local/lib
+-loqs
+-lcrypto
