@@ -2,6 +2,8 @@
 list
 kem
 sig
+kem_compare
+sig_compare
 
 # Object files and temporary build artifacts
 *.o

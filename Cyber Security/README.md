@@ -24,6 +24,8 @@ Cyber Security/
 ├── list.cpp           # Program 1: Discovers and prints all supported KEM & SIG algorithms
 ├── kem.cpp            # Program 2: Post-Quantum Key Encapsulation Mechanism (Key Exchange) demo
 ├── sig.cpp            # Program 3: Post-Quantum Digital Signature generation & verification demo
+├── kem_compare.cpp    # Program 4: Multi-algorithm KEM benchmark & comparison tool
+├── sig_compare.cpp    # Program 5: Multi-algorithm Digital Signature benchmark & comparison tool
 ├── Makefile           # Automated build and run configuration
 ├── compile_flags.txt  # Language server flags for clangd / IDE IntelliSense
 ├── .gitignore         # Ignores compiled binaries and temporary build files
@@ -62,13 +64,33 @@ Demonstrates quantum-safe authenticity, integrity, and tamper detection in 5 ste
 
 *Default algorithm:* `ML-DSA-65` (NIST Security Level 3 / Dilithium3).
 
+### 4. Multi-Algorithm KEM Benchmark (`kem_compare.cpp`)
+Benchmarks and compares multiple KEM algorithm families side-by-side:
+- **ML-KEM-512 / 768 / 1024** (Module Lattice)
+- **Classic-McEliece-348864** (Code-Based Goppa Codes)
+- **FrodoKEM-640-AES** (Unstructured Lattice)
+- **BIKE-L1** (Code-Based Bit-Flipping)
+
+Measures and displays:
+- Public Key, Ciphertext, and Secret Key sizes
+- KeyGen, Encapsulation, and Decapsulation latencies (in microseconds)
+
+### 5. Multi-Algorithm Signature Benchmark (`sig_compare.cpp`)
+Benchmarks and compares multiple Digital Signature algorithm families side-by-side:
+- **ML-DSA-44 / 65 / 87** (Module Lattice / Dilithium)
+- **Falcon-512 / 1024** (NTRU Fast Fourier Lattice)
+
+Measures and displays:
+- Public Key, Signature, and Secret Key sizes
+- KeyGen, Signing, and Verification latencies (in microseconds)
+
 ---
 
 ## How to Build & Run
 
 ### Quick Start (All Programs)
 
-Run all three demos in sequence with one command:
+Run all demos and benchmarks with one command:
 ```bash
 make run
 ```
@@ -80,27 +102,15 @@ make run
 You can build all binaries or specific ones using `make`:
 
 ```bash
-# Compile all programs (list, kem, sig)
+# Compile all programs
 make
 
 # Or compile individual targets
 make list
 make kem
 make sig
-```
-
-#### Manual Compilation with `g++` / `clang++`:
-If you prefer running manual compiler commands:
-```bash
-# macOS (Apple Silicon / Homebrew)
-g++ -std=c++17 -I/opt/homebrew/include -I/opt/homebrew/opt/openssl@3/include list.cpp -o list -L/opt/homebrew/lib -L/opt/homebrew/opt/openssl@3/lib -loqs -lcrypto
-g++ -std=c++17 -I/opt/homebrew/include -I/opt/homebrew/opt/openssl@3/include kem.cpp -o kem -L/opt/homebrew/lib -L/opt/homebrew/opt/openssl@3/lib -loqs -lcrypto
-g++ -std=c++17 -I/opt/homebrew/include -I/opt/homebrew/opt/openssl@3/include sig.cpp -o sig -L/opt/homebrew/lib -L/opt/homebrew/opt/openssl@3/lib -loqs -lcrypto
-
-# Linux (Ubuntu / Fedora with liboqs in /usr/local)
-g++ -std=c++17 list.cpp -o list -loqs -lcrypto
-g++ -std=c++17 kem.cpp -o kem -loqs -lcrypto
-g++ -std=c++17 sig.cpp -o sig -loqs -lcrypto
+make kem_compare
+make sig_compare
 ```
 
 ---
@@ -117,10 +127,10 @@ g++ -std=c++17 sig.cpp -o sig -loqs -lcrypto
 # Run with default algorithm (ML-KEM-768)
 ./kem
 
-# Run with a custom algorithm (e.g. ML-KEM-1024, FrodoKEM-640-AES, BIKE-L1)
+# Run with a custom algorithm
 ./kem ML-KEM-1024
 ./kem FrodoKEM-640-AES
-./kem Kyber512
+./kem Classic-McEliece-348864
 ```
 
 #### 3. Run Digital Signature (SIG)
@@ -131,7 +141,16 @@ g++ -std=c++17 sig.cpp -o sig -loqs -lcrypto
 # Run with a custom algorithm and custom message
 ./sig Falcon-512 "Secret instructions for exam"
 ./sig ML-DSA-87 "Official transaction confirmation"
-./sig SLH_DSA_SHAKE_128F
+```
+
+#### 4. Run KEM Comparison Benchmark
+```bash
+./kem_compare
+```
+
+#### 5. Run Signature Comparison Benchmark
+```bash
+./sig_compare
 ```
 
 ---
@@ -141,39 +160,4 @@ g++ -std=c++17 sig.cpp -o sig -loqs -lcrypto
 To remove all compiled binaries and build artifacts:
 ```bash
 make clean
-```
-
----
-
-## Environment & Installation Notes
-
-If running on a new machine:
-
-### macOS:
-```bash
-# 1. Install dependencies
-brew install liboqs openssl@3 cmake git
-
-# 2. Install liboqs-cpp header wrapper
-git clone --depth=1 https://github.com/open-quantum-safe/liboqs-cpp /tmp/liboqs-cpp
-cmake -S /tmp/liboqs-cpp -B /tmp/liboqs-cpp/build -DCMAKE_INSTALL_PREFIX=/opt/homebrew
-cmake --build /tmp/liboqs-cpp/build --target install
-```
-
-### Ubuntu / Debian:
-```bash
-# 1. Dependencies
-sudo apt update && sudo apt install -y git cmake gcc g++ libssl-dev
-
-# 2. Build and install liboqs
-git clone --depth=1 https://github.com/open-quantum-safe/liboqs
-cmake -S liboqs -B liboqs/build -DBUILD_SHARED_LIBS=ON
-cmake --build liboqs/build --parallel $(nproc)
-sudo cmake --build liboqs/build --target install
-sudo ldconfig
-
-# 3. Install liboqs-cpp
-git clone --depth=1 https://github.com/open-quantum-safe/liboqs-cpp
-cmake -S liboqs-cpp -B liboqs-cpp/build
-sudo cmake --build liboqs-cpp/build --target install
 ```

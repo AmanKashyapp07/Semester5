@@ -8,7 +8,7 @@ LDFLAGS ?= -L/opt/homebrew/lib \
            -L/usr/local/lib \
            -loqs -lcrypto
 
-TARGETS = list kem sig
+TARGETS = list kem sig kem_compare sig_compare
 
 all: $(TARGETS)
 
@@ -21,6 +21,12 @@ kem: kem.cpp
 sig: sig.cpp
 	$(CXX) $(CXXFLAGS) sig.cpp -o sig $(LDFLAGS)
 
+kem_compare: kem_compare.cpp
+	$(CXX) $(CXXFLAGS) kem_compare.cpp -o kem_compare $(LDFLAGS)
+
+sig_compare: sig_compare.cpp
+	$(CXX) $(CXXFLAGS) sig_compare.cpp -o sig_compare $(LDFLAGS)
+
 run: all
 	@echo "================ RUNNING LIST ================"
 	./list
@@ -28,6 +34,10 @@ run: all
 	./kem
 	@echo "\n================ RUNNING SIG ================"
 	./sig
+	@echo "\n================ RUNNING KEM BENCHMARK ================"
+	./kem_compare
+	@echo "\n================ RUNNING SIG BENCHMARK ================"
+	./sig_compare
 
 clean:
 	rm -f $(TARGETS)
