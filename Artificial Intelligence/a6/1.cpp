@@ -9,7 +9,13 @@
     every failure, and every backtrack.
 */
 
-#include <bits/stdc++.h>
+#include <stdio.h>
+#include <iostream>
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <climits>
+
 using namespace std;
 
 vector<string> VARS = {"A","B","C","D","E"};
